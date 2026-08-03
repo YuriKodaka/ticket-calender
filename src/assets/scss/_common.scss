@@ -1,0 +1,22 @@
+﻿body {
+  line-height: 1;
+  font-family: "Hiragino Maru Gothic W4 JIS2004", 貂ｸ繧ｴ繧ｷ繝・け, YuGothic, "繝偵Λ繧ｮ繝手ｧ偵ざ ProN W3", "Hiragino Kaku Gothic ProN", 繝｡繧､繝ｪ繧ｪ, Meiryo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.AppRoot {
+  min-height: 100vh;
+}
+
+.AppContent {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 0;
+}
+
+@media (min-width: 600px) {
+  .AppContent {
+    min-height: calc(100vh - 64px);
+  }
+}
