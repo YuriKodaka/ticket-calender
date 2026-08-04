@@ -142,3 +142,18 @@ a:hover img {
   white-space: nowrap;
   padding-bottom: 10px;
 }
+
+@keyframes calendar-slide-from-right {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes calendar-slide-from-left {
+  from { transform: translateX(-24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.calendar-grid.slide-from-right {
+  animation: calendar-slide-from-right 0.2s ease-out;
+}
+.calendar-grid.slide-from-left {
+  animation: calendar-slide-from-left 0.2s ease-out;
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { CalendarEvent } from "../types";
 import { TICKET_STATUS_COLOR, TICKET_STATUS_LABEL } from "../types";
 import { useTicketStatuses } from "../hooks/useTicketStatuses";
@@ -49,6 +49,29 @@ export function MonthCalendar({ events, selectedShowIds }: Props) {
 
   const formatMonth = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
   const [currentMonth, setCurrentMonth] =  useState<string>(formatMonth(new Date()));
+  const [slideDir, setSlideDir] = useState<"from-left" | "from-right">("from-right");
+
+  function goToMonth(diff: number) {
+    setSlideDir(diff > 0 ? "from-right" : "from-left");
+    setCurrentMonth(m => shiftMonth(m, diff));
+  }
+
+  // スワイプでの月送り
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // 横スワイプのみ拾う
+    goToMonth(dx < 0 ? 1 : -1);
+  }
 
   // 「観たい作品」でチェックされている作品のみ、かつキャスト希望を満たす公演だけに絞る
   // （キャスト希望は会場違いをまとめてタイトル単位で持っているのでtitleで参照する）
@@ -125,11 +148,11 @@ export function MonthCalendar({ events, selectedShowIds }: Props) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
         <div />
         <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
-          <IconButton size="small" onClick={() => setCurrentMonth(m => shiftMonth(m, -1))} aria-label="前の月">
+          <IconButton size="small" onClick={() => goToMonth(-1)} aria-label="前の月">
             <ChevronLeftIcon />
           </IconButton>
           <div style={{ fontWeight: 700 }}>{monthLabel}</div>
-          <IconButton size="small" onClick={() => setCurrentMonth(m => shiftMonth(m, 1))} aria-label="次の月">
+          <IconButton size="small" onClick={() => goToMonth(1)} aria-label="次の月">
             <ChevronRightIcon />
           </IconButton>
         </div>
@@ -157,8 +180,13 @@ export function MonthCalendar({ events, selectedShowIds }: Props) {
         ))}
       </div>
 
-      {/* グリッド */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+      {/* グリッド（スワイプで月送り） */}
+      <div style={{ overflow: "hidden" }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div
+        key={currentMonth}
+        className={`calendar-grid slide-${slideDir}`}
+        style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}
+      >
         {cells.map((d) => {
           const ymd = toYmd(d);
           const inThisMonth = d.getMonth() === viewDate.getMonth();
@@ -209,6 +237,7 @@ export function MonthCalendar({ events, selectedShowIds }: Props) {
             </button>
           );
         })}
+      </div>
       </div>
 
       {/* 選択日の詳細 */}
