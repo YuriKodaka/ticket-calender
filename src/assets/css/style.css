@@ -1,6 +1,10 @@
 @charset "UTF-8";
+html {
+  scrollbar-gutter: stable; /* スクロールバーの有無で横幅ががたつかないようにする */
+}
 body {
   min-height: 100vh;
+  overflow-x: hidden; /* 横スクロール・はみ出しを防ぐ */
 }
 
 /* CSS Document */
@@ -127,9 +131,11 @@ a:hover img {
 }
 
 .Calendar {
-  width: min(420px, 98vw);
+  width: 100%;
+  max-width: 420px;
   padding: 16px 8px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 .Calendar h1 {
   font-size: clamp(1.6rem, 6vw, 2rem);

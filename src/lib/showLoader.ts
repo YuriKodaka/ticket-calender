@@ -1,28 +1,39 @@
 import type { CalendarEvent, RoleAssignment } from "../types";
 import { parseCsv } from "./csvParse";
 
-export type Show = { showId: string; title: string; theatre: string };
+export type Show = { showId: string; title: string; theatre: string; emoji: string };
 
 // public/csv/{タイトル}_{劇場名}.csv （必要なら {タイトル}_{年}_{劇場名}.csv）を置いて
-// index.txt にファイル名を1行追加するだけで表示される
+// index.txt にファイル名を1行追加するだけで表示される（行末に ,絵文字 を書けばカレンダーに使う絵文字を指定できる）
 // BASE_URL基準にすることで、file://でdist/index.htmlを直接開いた場合や
 // サブディレクトリ配下で配信した場合でも解決できるようにする
 const CSV_DIR = `${import.meta.env.BASE_URL}csv`;
+const DEFAULT_EMOJI = "🎭";
 
-function parseFileName(fileName: string): Show {
+function parseIndexLine(line: string): { fileName: string; emoji: string } {
+  const commaIndex = line.indexOf(",");
+  if (commaIndex === -1) return { fileName: line, emoji: DEFAULT_EMOJI };
+  const fileName = line.slice(0, commaIndex).trim();
+  const emoji = line.slice(commaIndex + 1).trim() || DEFAULT_EMOJI;
+  return { fileName, emoji };
+}
+
+function parseFileName(fileName: string): { showId: string; title: string; theatre: string; sortKey: string } {
   const base = fileName.replace(/\.csv$/, "");
   const parts = base.split("_");
 
   if (parts.length < 2) {
-    return { showId: base, title: base, theatre: "" };
+    return { showId: base, title: base, theatre: "", sortKey: "" };
   }
 
   const theatre = parts[parts.length - 1];
   const rest = parts.slice(0, -1);
-  const hasYear = rest.length > 1 && /^\d{4}$/.test(rest[rest.length - 1]);
-  const title = (hasYear ? rest.slice(0, -1) : rest).join("_");
+  const last = rest[rest.length - 1];
+  const hasDateCode = rest.length > 1 && /^\d{4}$/.test(last); // 例: 2026 や 2610（年月）
+  const title = (hasDateCode ? rest.slice(0, -1) : rest).join("_");
+  const sortKey = hasDateCode ? last : "";
 
-  return { showId: base, title, theatre };
+  return { showId: base, title, theatre, sortKey };
 }
 
 function toYmd(slashDate: string): string {
@@ -50,6 +61,7 @@ function parseShowCsv(show: Show, content: string): CalendarEvent[] {
       showId: show.showId,
       title: show.title,
       theatre: show.theatre,
+      emoji: show.emoji,
       date: toYmd(datePart),
       time,
       roles,
@@ -59,24 +71,45 @@ function parseShowCsv(show: Show, content: string): CalendarEvent[] {
 }
 
 export async function loadShows(): Promise<{ shows: Show[]; events: CalendarEvent[] }> {
-  const indexText = await fetch(`${CSV_DIR}/index.txt`).then(r => r.text());
-  const fileNames = indexText
+  // GitHub Pages はindex.txt/CSVにCDNキャッシュ（数分）を付けて配信するため、
+  // ブラウザのキャッシュ無視だけでは古い内容が残ることがある。
+  // リクエストごとに変わるクエリを付けてCDNキャッシュも毎回バイパスする
+  const bust = Date.now();
+  const noCache: RequestInit = { cache: "no-store" };
+
+  const indexText = await fetch(`${CSV_DIR}/index.txt?v=${bust}`, noCache).then(r => r.text());
+  const entries = indexText
     .split("\n")
     .map(line => line.trim())
-    .filter(line => line !== "" && !line.startsWith("#"));
+    .filter(line => line !== "" && !line.startsWith("#"))
+    .map(parseIndexLine);
 
   const shows: Show[] = [];
   const events: CalendarEvent[] = [];
 
   const contents = await Promise.all(
-    fileNames.map(fileName => fetch(`${CSV_DIR}/${encodeURIComponent(fileName)}`).then(r => r.text()))
+    entries.map(e => fetch(`${CSV_DIR}/${encodeURIComponent(e.fileName)}?v=${bust}`, noCache).then(r => r.text()))
   );
 
-  fileNames.forEach((fileName, i) => {
-    const show = parseFileName(fileName);
-    shows.push(show);
-    events.push(...parseShowCsv(show, contents[i]));
+  const parsed = entries.map((entry, i) => ({
+    show: { ...parseFileName(entry.fileName), emoji: entry.emoji },
+    content: contents[i],
+  }));
+
+  // ファイル名の年月部分（例: 2610）が若い順（昇順）になるよう並べる。年月が無いものは末尾へ
+  parsed.sort((a, b) => {
+    if (a.show.sortKey && b.show.sortKey) return a.show.sortKey.localeCompare(b.show.sortKey);
+    if (a.show.sortKey) return -1;
+    if (b.show.sortKey) return 1;
+    return a.show.title.localeCompare(b.show.title);
   });
+
+  for (const { show, content } of parsed) {
+    const { sortKey, ...cleanShow } = show;
+    void sortKey;
+    shows.push(cleanShow);
+    events.push(...parseShowCsv(cleanShow, content));
+  }
 
   return { shows, events };
 }

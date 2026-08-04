@@ -7,6 +7,7 @@ export type CalendarEvent = {
   date: string;
   time: string;
   theatre: string;
+  emoji: string; // カレンダーに表示する作品の絵文字（index.txtで指定）
   roles?: RoleAssignment[];
   note?: string; // 「貸切」など、CSVの備考列
 };
