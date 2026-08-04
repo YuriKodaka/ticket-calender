@@ -1,6 +1,6 @@
-import { Box, Checkbox, FormControlLabel, FormGroup, Typography } from "@mui/material";
+import { Box, Checkbox, FormControlLabel, Typography } from "@mui/material";
 
-type Show = { showId: string; title: string; theatre: string };
+type Show = { showId: string; title: string; theatre: string; emoji: string };
 
 type Props = {
   shows: Show[];
@@ -14,7 +14,13 @@ export function ShowSelector({ shows, selectedShowIds, onToggleShow }: Props) {
       <Typography variant="subtitle2" sx={{ textAlign: "center" }}>
         観たい作品にチェックを入れる
       </Typography>
-      <FormGroup row sx={{ justifyContent: "center" }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+          justifyItems: "start",
+        }}
+      >
         {shows.map(s => (
           <FormControlLabel
             key={s.showId}
@@ -24,10 +30,10 @@ export function ShowSelector({ shows, selectedShowIds, onToggleShow }: Props) {
                 onChange={() => onToggleShow(s.showId)}
               />
             }
-            label={s.theatre ? `${s.title}（${s.theatre}）` : s.title}
+            label={s.theatre ? `${s.emoji}${s.title}（${s.theatre}）` : `${s.emoji}${s.title}`}
           />
         ))}
-      </FormGroup>
+      </Box>
     </Box>
   );
 }
