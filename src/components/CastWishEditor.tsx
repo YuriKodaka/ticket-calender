@@ -11,7 +11,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import type { CalendarEvent } from "../types";
+import type { CalendarEvent, RoleAssignment } from "../types";
 import { useRoleWishes } from "../hooks/useRoleWishes";
 import { performanceQualifies } from "../lib/castMatch";
 
@@ -68,7 +68,59 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
     return map;
   }, [showEvents]);
 
+  // 「この役者が出るならこの組み合わせしかない」という完全固定チーム制の作品だけ、
+  // チーム選択UIにする。同じ役者が違う組み合わせ（＝チーム外の相手）でも出ている場合は
+  // 純粋なチーム制ではないので、通常の役×俳優チェックのままにする。
+  function castKey(cast: RoleAssignment[]): string {
+    return [...cast]
+      .sort((a, b) => a.role.localeCompare(b.role))
+      .map(r => `${r.role}:${r.actor}`)
+      .join("|");
+  }
+
+  const teams = useMemo(() => {
+    const map = new Map<string, { cast: RoleAssignment[]; firstDate: string }>();
+    for (const e of showEvents) {
+      if (!e.roles || e.roles.length === 0) continue;
+      const key = castKey(e.roles);
+      if (!map.has(key)) map.set(key, { cast: e.roles, firstDate: e.date });
+    }
+    return [...map.values()].sort((a, b) => a.firstDate.localeCompare(b.firstDate));
+  }, [showEvents]);
+
+  const performancesWithCast = useMemo(
+    () => showEvents.filter(e => e.roles && e.roles.length > 0).length,
+    [showEvents]
+  );
+
+  const isTeamShow = useMemo(() => {
+    if (actorsByRole.size < 2) return false; // 役が1つだけなら「チーム」の意味がない
+    if (teams.length < 2 || teams.length >= performancesWithCast) return false;
+    // 役に関係なく、俳優ごとに登場した組み合わせパターンが1種類だけかを見る。
+    // 同じ俳優が違う相手や違う役でも出ている場合は固定チームではないので対象外にする
+    const castKeysByActor = new Map<string, Set<string>>();
+    for (const e of showEvents) {
+      if (!e.roles || e.roles.length === 0) continue;
+      const key = castKey(e.roles);
+      for (const r of e.roles) {
+        const set = castKeysByActor.get(r.actor) ?? new Set<string>();
+        set.add(key);
+        castKeysByActor.set(r.actor, set);
+      }
+    }
+    return [...castKeysByActor.values()].every(set => set.size === 1);
+  }, [teams, performancesWithCast, showEvents, actorsByRole]);
+
   const wish = getWish(selectedTitle);
+
+  function toggleTeam(cast: RoleAssignment[]) {
+    const allChecked = cast.every(r => (wish[r.role] ?? []).includes(r.actor));
+    const target = !allChecked;
+    for (const r of cast) {
+      const isChecked = (wish[r.role] ?? []).includes(r.actor);
+      if (isChecked !== target) toggleActor(selectedTitle, r.role, r.actor);
+    }
+  }
 
   // 今チェックしている条件を満たす公演数
   const qualifyingCount = useMemo(
@@ -108,7 +160,9 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
       {actorsByRole.size > 0 && (
         <>
           <Typography variant="body2" color="text.secondary">
-            観たい役者名にチェックしてください。複数選択可能です。チェックがない役は誰でもOKになります。
+            {isTeamShow
+              ? "観たいチームにチェックしてください。複数選択可能です。"
+              : "観たい役者名にチェックしてください。複数選択可能です。チェックがない役は誰でもOKになります。"}
           </Typography>
           <Box sx={{ position: "relative", mt: 2.5 }}>
             <Typography
@@ -125,32 +179,58 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
             >
               該当：{qualifyingCount}件
             </Typography>
-            <Table size="small">
-              <TableBody>
-              {[...actorsByRole.entries()].map(([role, actors]) => (
-                <TableRow key={role}>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "top", pt: 1.5 }}>
-                    {role}
-                  </TableCell>
-                  <TableCell>
-                    {actors.map(actor => (
-                      <FormControlLabel
-                        key={actor}
-                        control={
-                          <Checkbox
-                            size="small"
-                            checked={(wish[role] ?? []).includes(actor)}
-                            onChange={() => toggleActor(selectedTitle, role, actor)}
-                          />
-                        }
-                        label={actor}
-                      />
-                    ))}
-                  </TableCell>
-                </TableRow>
-              ))}
-              </TableBody>
-            </Table>
+            {isTeamShow ? (
+              <Table size="small">
+                <TableBody>
+                {teams.map(({ cast }, i) => {
+                  const checked = cast.every(r => (wish[r.role] ?? []).includes(r.actor));
+                  return (
+                    <TableRow key={i}>
+                      <TableCell sx={{ verticalAlign: "top", whiteSpace: "nowrap", pt: 1.5, width: 88, pr: 0 }}>
+                        <FormControlLabel
+                          control={<Checkbox size="small" checked={checked} onChange={() => toggleTeam(cast)} />}
+                          label={`チーム${i + 1}`}
+                          sx={{ mr: 0 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ verticalAlign: "top", pt: 1.5, fontSize: "1rem", lineHeight: 1.5 }}>
+                        {cast.map(r => (
+                          <div key={r.role}>{r.role}：{r.actor}</div>
+                        ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table size="small">
+                <TableBody>
+                {[...actorsByRole.entries()].map(([role, actors]) => (
+                  <TableRow key={role}>
+                    <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "top", pt: 1.5 }}>
+                      {role}
+                    </TableCell>
+                    <TableCell>
+                      {actors.map(actor => (
+                        <FormControlLabel
+                          key={actor}
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={(wish[role] ?? []).includes(actor)}
+                              onChange={() => toggleActor(selectedTitle, role, actor)}
+                            />
+                          }
+                          label={actor}
+                        />
+                      ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                </TableBody>
+              </Table>
+            )}
           </Box>
         </>
       )}
