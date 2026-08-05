@@ -15,7 +15,7 @@ import type { CalendarEvent } from "../types";
 import { useRoleWishes } from "../hooks/useRoleWishes";
 import { performanceQualifies } from "../lib/castMatch";
 
-type Show = { showId: string; title: string; theatre: string };
+type Show = { showId: string; title: string; theatre: string; emoji: string };
 
 type Props = {
   shows: Show[];
@@ -26,16 +26,18 @@ type Props = {
 export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
   // 観たい作品でチェックされている作品を、会場違いは同じ作品としてタイトルでまとめる
   // （会場ごとに観たいキャストが変わることはない前提）
-  const visibleTitles = useMemo(() => {
+  const visibleShows = useMemo(() => {
     const seen = new Set<string>();
-    const titles: string[] = [];
+    const out: { title: string; emoji: string }[] = [];
     for (const s of shows) {
       if (!selectedShowIds.includes(s.showId) || seen.has(s.title)) continue;
       seen.add(s.title);
-      titles.push(s.title);
+      out.push({ title: s.title, emoji: s.emoji });
     }
-    return titles;
+    return out;
   }, [shows, selectedShowIds]);
+
+  const visibleTitles = useMemo(() => visibleShows.map(s => s.title), [visibleShows]);
 
   const [selectedTitle, setSelectedTitle] = useState<string>(visibleTitles[0] ?? "");
 
@@ -90,9 +92,9 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
         onChange={(e) => setSelectedTitle(e.target.value)}
         MenuProps={{ disableScrollLock: true }}
       >
-        {visibleTitles.map(title => (
-          <MenuItem key={title} value={title}>
-            {title}
+        {visibleShows.map(s => (
+          <MenuItem key={s.title} value={s.title}>
+            {s.title}{s.emoji}
           </MenuItem>
         ))}
       </Select>

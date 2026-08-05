@@ -30,7 +30,7 @@ export function ShowSelector({ shows, selectedShowIds, onToggleShow }: Props) {
                 onChange={() => onToggleShow(s.showId)}
               />
             }
-            label={s.theatre ? `${s.emoji}${s.title}（${s.theatre}）` : `${s.emoji}${s.title}`}
+            label={s.theatre ? `${s.title} (${s.theatre})` : s.title}
           />
         ))}
       </Box>
