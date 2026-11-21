@@ -4,16 +4,21 @@ import { parseCsv } from "./csvParse";
 export type Show = { showId: string; title: string; theatre: string; emoji: string };
 
 // public/csv/{タイトル}_{劇場名}.csv （必要なら {タイトル}_{年}_{劇場名}.csv）を置いて
-// index.txt にファイル名を1行追加するだけで表示される（行末に ,絵文字 を書けばカレンダーに使う絵文字を指定できる）
+// index.txt にファイル名を1行追加するだけで表示される（.csv は省略可。行末に ,絵文字 を書けばカレンダーに使う絵文字を指定できる）
 // BASE_URL基準にすることで、file://でdist/index.htmlを直接開いた場合や
 // サブディレクトリ配下で配信した場合でも解決できるようにする
 const CSV_DIR = `${import.meta.env.BASE_URL}csv`;
 const DEFAULT_EMOJI = "🎭";
 
+// index.txt では拡張子 .csv を省略してもよい（付いていなければ補う）
+function withCsvExt(name: string): string {
+  return /\.csv$/i.test(name) ? name : `${name}.csv`;
+}
+
 function parseIndexLine(line: string): { fileName: string; emoji: string } {
   const commaIndex = line.indexOf(",");
-  if (commaIndex === -1) return { fileName: line, emoji: DEFAULT_EMOJI };
-  const fileName = line.slice(0, commaIndex).trim();
+  if (commaIndex === -1) return { fileName: withCsvExt(line), emoji: DEFAULT_EMOJI };
+  const fileName = withCsvExt(line.slice(0, commaIndex).trim());
   const emoji = line.slice(commaIndex + 1).trim() || DEFAULT_EMOJI;
   return { fileName, emoji };
 }
