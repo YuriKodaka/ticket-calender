@@ -37,7 +37,8 @@ function App() {
           value={tab}
           onChange={(_, v) => setTab(v)}
           centered
-          sx={{ bgcolor: "background.paper" }}
+          // 非選択タブの下にも薄い灰色の線を引く（insetの影なので選択中タブの下線が上に重なる）
+          sx={{ bgcolor: "background.paper", boxShadow: theme => `inset 0 -1px 0 ${theme.palette.divider}` }}
         >
           <Tab label="カレンダー" />
           <Tab label="観たい作品" />

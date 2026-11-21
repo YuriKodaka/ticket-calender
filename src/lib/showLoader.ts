@@ -1,7 +1,8 @@
 import type { CalendarEvent, RoleAssignment } from "../types";
 import { parseCsv } from "./csvParse";
 
-export type Show = { showId: string; title: string; theatre: string; emoji: string };
+// sortKey: ファイル名の年月部分（例: 2610）。無ければ空文字
+export type Show = { showId: string; title: string; theatre: string; emoji: string; sortKey: string };
 
 // public/csv/{タイトル}_{劇場名}.csv （必要なら {タイトル}_{年}_{劇場名}.csv）を置いて
 // index.txt にファイル名を1行追加するだけで表示される（.csv は省略可。行末に ,絵文字 を書けばカレンダーに使う絵文字を指定できる）
@@ -101,19 +102,17 @@ export async function loadShows(): Promise<{ shows: Show[]; events: CalendarEven
     content: contents[i],
   }));
 
-  // ファイル名の年月部分（例: 2610）が若い順（昇順）になるよう並べる。年月が無いものは末尾へ
+  // ファイル名の年月部分（例: 2610）が新しい順（降順）になるよう並べる。年月が無いものは末尾へ
   parsed.sort((a, b) => {
-    if (a.show.sortKey && b.show.sortKey) return a.show.sortKey.localeCompare(b.show.sortKey);
+    if (a.show.sortKey && b.show.sortKey) return b.show.sortKey.localeCompare(a.show.sortKey);
     if (a.show.sortKey) return -1;
     if (b.show.sortKey) return 1;
     return a.show.title.localeCompare(b.show.title);
   });
 
   for (const { show, content } of parsed) {
-    const { sortKey, ...cleanShow } = show;
-    void sortKey;
-    shows.push(cleanShow);
-    events.push(...parseShowCsv(cleanShow, content));
+    shows.push(show);
+    events.push(...parseShowCsv(show, content));
   }
 
   return { shows, events };
