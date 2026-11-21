@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
+  Button,
   Checkbox,
   FormControlLabel,
   MenuItem,
@@ -48,7 +49,7 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
     }
   }, [visibleTitles, selectedTitle]);
 
-  const { getWish, toggleActor } = useRoleWishes();
+  const { getWish, toggleActor, setWish } = useRoleWishes();
 
   const showEvents = useMemo(
     () => events.filter(e => e.title === selectedTitle),
@@ -128,6 +129,15 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
     [showEvents, wish]
   );
 
+  // 全員にチェックが入っているか（全チェック／全解除ボタンの切り替え用）
+  const allChecked =
+    actorsByRole.size > 0 &&
+    [...actorsByRole.entries()].every(([role, actors]) => actors.every(a => (wish[role] ?? []).includes(a)));
+
+  function toggleAll() {
+    setWish(selectedTitle, allChecked ? {} : Object.fromEntries(actorsByRole));
+  }
+
   if (shows.length === 0) {
     return <Box sx={{ p: 2 }}>作品データがまだありません。</Box>;
   }
@@ -164,21 +174,15 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
               ? "観たいチームにチェックしてください。複数選択可能です。"
               : "観たい役者名にチェックしてください。複数選択可能です。チェックがない役は誰でもOKになります。"}
           </Typography>
-          <Box sx={{ position: "relative", mt: 2.5 }}>
-            <Typography
-              variant="caption"
-              sx={{
-                position: "absolute",
-                top: -24,
-                right: 0,
-                px: 1.2,
-                py: 0.4,
-                fontSize: '1em',
-                fontWeight: 700,
-              }}
-            >
-              該当：{qualifyingCount}件
-            </Typography>
+          <Box>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Button size="small" variant="outlined" onClick={toggleAll}>
+                {allChecked ? "全解除" : "全チェック"}
+              </Button>
+              <Typography sx={{ px: 1.2, fontWeight: 700 }}>
+                該当：{qualifyingCount}件
+              </Typography>
+            </Box>
             {isTeamShow ? (
               <Table size="small">
                 <TableBody>
@@ -204,11 +208,14 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
                 </TableBody>
               </Table>
             ) : (
-              <Table size="small">
+              // trにはpaddingを付けられないので、セルの上下paddingだけ残して行の余白にし、左右paddingは無くす
+              <Table size="small" sx={{ "& td": { px: 0, py: 0.75, verticalAlign: "top" } }}>
                 <TableBody>
                 {[...actorsByRole.entries()].map(([role, actors]) => (
                   <TableRow key={role}>
-                    <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "top", pt: 1.5 }}>
+                    {/* 役名は長ければ改行してよいが、俳優名は途中で改行させない。
+                        上paddingはチェックボックス（small＝上下9px）の文字位置に揃える */}
+                    <TableCell sx={{ fontWeight: 700, pt: "15px !important", pr: "8px !important", width: "30%" }}>
                       {role}
                     </TableCell>
                     <TableCell>
@@ -223,6 +230,7 @@ export function CastWishEditor({ shows, events, selectedShowIds }: Props) {
                             />
                           }
                           label={actor}
+                          sx={{ whiteSpace: "nowrap", ml: 0 }}
                         />
                       ))}
                     </TableCell>

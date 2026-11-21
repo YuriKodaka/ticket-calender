@@ -20,7 +20,7 @@ export type TicketStatus = "none" | "considering" | "secured";
 export const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
   none: "未定",
   considering: "検討中",
-  secured: "確保済み",
+  secured: "確保済",
 };
 
 export const TICKET_STATUS_COLOR: Record<TicketStatus, string> = {

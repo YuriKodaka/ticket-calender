@@ -2,6 +2,7 @@
 import { MonthCalendar } from "./components/MonthCalendar";
 import { CastWishEditor } from "./components/CastWishEditor";
 import { ShowSelector } from "./components/ShowSelector";
+import { PerformanceList } from "./components/PerformanceList";
 import { loadShows, type Show } from "./lib/showLoader";
 import { useSelectedShows } from "./hooks/useSelectedShows";
 import type { CalendarEvent } from "./types";
@@ -38,9 +39,16 @@ function App() {
           onChange={(_, v) => setTab(v)}
           centered
           // 非選択タブの下にも薄い灰色の線を引く（insetの影なので選択中タブの下線が上に重なる）
-          sx={{ bgcolor: "background.paper", boxShadow: theme => `inset 0 -1px 0 ${theme.palette.divider}` }}
+          // タブが4つになったので、スマホ幅に収まるよう最小幅と左右余白を詰める
+          sx={{
+            bgcolor: "background.paper",
+            boxShadow: theme => `inset 0 -1px 0 ${theme.palette.divider}`,
+            // 狭い画面では文字も少し小さくして、横スクロールにならないようにする
+            "& .MuiTab-root": { minWidth: 0, px: { xs: 1, sm: 2 }, fontSize: { xs: 13, sm: 14 } },
+          }}
         >
           <Tab label="カレンダー" />
+          <Tab label="一覧" />
           <Tab label="観たい作品" />
           <Tab label="キャスト希望" />
         </Tabs>
@@ -60,9 +68,12 @@ function App() {
               </Box>
             )}
             {tab === 1 && (
-              <ShowSelector shows={shows} selectedShowIds={selectedShowIds} onToggleShow={toggleShow} />
+              <PerformanceList events={events} selectedShowIds={selectedShowIds} />
             )}
             {tab === 2 && (
+              <ShowSelector shows={shows} events={events} selectedShowIds={selectedShowIds} onToggleShow={toggleShow} />
+            )}
+            {tab === 3 && (
               <CastWishEditor shows={shows} events={events} selectedShowIds={selectedShowIds} />
             )}
           </>

@@ -25,5 +25,10 @@ export function useRoleWishes() {
     });
   }, []);
 
-  return { wishesByShow, getWish, toggleActor };
+  // 作品の希望をまるごと置き換える（全チェック／全解除用）
+  const setWish = useCallback((showId: string, wish: RoleWishes) => {
+    setWishesByShow(prev => ({ ...prev, [showId]: wish }));
+  }, []);
+
+  return { wishesByShow, getWish, toggleActor, setWish };
 }
